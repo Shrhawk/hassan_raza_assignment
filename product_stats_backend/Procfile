@@ -1,0 +1,1 @@
+web gunicorn product_stats_backend.wsgi:application --log-file -
