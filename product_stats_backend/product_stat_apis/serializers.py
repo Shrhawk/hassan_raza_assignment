@@ -2,7 +2,7 @@ from django.db.models import Avg, Count
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils.translation import ugettext_lazy as _
-from product_stat_apis.models import *
+from product_stat_apis.models import User, UserSales, Country, City
 import pandas as pd
 
 
@@ -38,7 +38,7 @@ class UserLoginSerializer(serializers.ModelSerializer):
         else:
             raise serializers.ValidationError("Email and password required")
         data_dict = dict()
-        data_dict["user_id"] = user.id
+        data_dict["user"] = user.id
         token = RefreshToken.for_user(user)
         data_dict["access_token"] = str(token.access_token)
         data_dict["refresh_token"] = str(token)
@@ -60,7 +60,7 @@ class UserSaleSerializer(serializers.ModelSerializer):
     Serializer for user sale.
     """
 
-    user_id = serializers.IntegerField(required=False, read_only=True)
+    user = serializers.IntegerField(required=False, read_only=True)
     sale_date = serializers.DateField(required=False, read_only=True)
     product_name = serializers.CharField(required=False, max_length=100, read_only=True)
     sale_number = serializers.IntegerField(required=False, read_only=True)
@@ -81,7 +81,7 @@ class UserSaleSerializer(serializers.ModelSerializer):
             obj["sale_number"] = obj["sales_number"]
             obj["product_name"] = obj["product"]
             UserSales.objects.create(
-                user_id=request.user,
+                user=request.user,
                 sale_date=obj["sale_date"],
                 product_name=obj["product_name"],
                 sale_number=obj["sale_number"],
@@ -98,7 +98,7 @@ class SaleSerializerList(serializers.ModelSerializer):
     revenue = serializers.FloatField(required=False, write_only=True)
     sale_number = serializers.FloatField(required=False, write_only=True)
     no_of_sale = serializers.IntegerField(required=False)
-    user_id = serializers.IntegerField(required=False, write_only=True)
+    user = serializers.IntegerField(required=False, write_only=True)
 
     class Meta:
         model = UserSales
@@ -117,7 +117,7 @@ class UserSalesDataSerializer(serializers.ModelSerializer):
 
 class SaleUpdateSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=True)
-    user_id = serializers.IntegerField(required=False, read_only=True)
+    user = serializers.IntegerField(required=False, read_only=True)
     """
     Serializer for sale update.
     """
@@ -168,7 +168,7 @@ class SaleStatSerializer(serializers.ModelSerializer):
         """
         try:
             user = self.context["request"].user
-            sales = UserSales.objects.filter(user_id=user).aggregate(
+            sales = UserSales.objects.filter(user=user).aggregate(
                 avg_sale=Avg("revenue")
             )
             return round(sales["avg_sale"], 2)
@@ -191,9 +191,9 @@ class SaleStatSerializer(serializers.ModelSerializer):
         """
         try:
             user = self.context["request"].user
-            sales = UserSales.objects.filter(user_id=user).order_by("-revenue").first()
+            sales = UserSales.objects.filter(user=user).order_by("-revenue").first()
             data_dict = {
-                "user_id": sales.user_id.id,
+                "user": sales.user.id,
                 "revenue": sales.revenue,
                 "sale_id": sales.id,
             }
@@ -207,9 +207,9 @@ class SaleStatSerializer(serializers.ModelSerializer):
         """
         try:
             user = self.context["request"].user
-            sales = UserSales.objects.filter(user_id=user).order_by("-revenue").first()
+            sales = UserSales.objects.filter(user=user).order_by("-revenue").first()
             data_dict = {
-                "user_id": sales.user_id.id,
+                "user": sales.user.id,
                 "revenue": sales.revenue,
                 "product_name": sales.product_name,
             }
@@ -224,13 +224,13 @@ class SaleStatSerializer(serializers.ModelSerializer):
         try:
             user = self.context["request"].user
             sale = (
-                UserSales.objects.filter(user_id=user)
+                UserSales.objects.filter(user=user)
                 .values("product_name")
                 .annotate(count=Count("product_name"))
             )
             sale = sorted(sale, key=lambda x: x["count"], reverse=True)
             data_dict = {
-                "user_id": user.id,
+                "user": user.id,
                 "product_name": sale[0]["product_name"],
                 "count": sale[0]["count"],
             }

@@ -53,7 +53,7 @@ class UserSales(models.Model):
     User sales model for the application to store the sales data of the user.
     """
 
-    user_id = models.ForeignKey(
+    user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="user_in_sales"
     )
     sale_date = models.DateField()

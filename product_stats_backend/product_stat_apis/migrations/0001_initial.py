@@ -145,7 +145,7 @@ class Migration(migrations.Migration):
                 ("sale_number", models.IntegerField()),
                 ("revenue", models.FloatField()),
                 (
-                    "user_id",
+                    "user",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="user_in_sales",
