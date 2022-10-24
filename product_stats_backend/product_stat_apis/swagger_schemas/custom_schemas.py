@@ -8,7 +8,7 @@ user_login_schema_response = {
                 "success": "true",
                 "message": "User login successfully",
                 "data": {
-                    "user_id": 3,
+                    "user": 3,
                     "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIj",
                     "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjo",
                 },
@@ -158,17 +158,17 @@ sale_stat_response = {
                     "average_sales_for_current_user": 3.0,
                     "average_sales_for_all_users": 3.0,
                     "max_revenue_for_one_sale_current_user": {
-                        "user_id": 1,
+                        "user": 1,
                         "revenue": 12.0,
                         "sale_id": 1,
                     },
                     "highest_revenue_product_for_user": {
-                        "user_id": 1,
+                        "user": 1,
                         "revenue": 12.0,
                         "product_name": "Scramble",
                     },
                     "most_sold_product_for_user": {
-                        "user_id": 1,
+                        "user": 1,
                         "product_name": "2",
                         "count": 3,
                     },

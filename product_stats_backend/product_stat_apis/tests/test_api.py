@@ -1,7 +1,7 @@
 import json
 import unittest
 import pytest
-from django.db.models import Avg, Max, Count
+from django.db.models import Avg, Count
 from rest_framework.test import APIClient
 from django.urls import reverse
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -72,7 +72,7 @@ class TestProductStats(unittest.TestCase):
         user = self.create_user()
         self.user = user
         user_sale = self.create_sale()
-        assert user_sale.user_id.id == user.id
+        assert user_sale.user.id == user.id
         assert user_sale.product_name == "Test"
 
     @pytest.mark.django_db
@@ -84,9 +84,7 @@ class TestProductStats(unittest.TestCase):
         user = self.create_user()
         self.user = user
         self.create_sale()
-        sales = UserSales.objects.filter(user_id=user).aggregate(
-            avg_sale=Avg("revenue")
-        )
+        sales = UserSales.objects.filter(user=user).aggregate(avg_sale=Avg("revenue"))
         assert sales["avg_sale"] == 100
 
     @pytest.mark.django_db
@@ -111,13 +109,13 @@ class TestProductStats(unittest.TestCase):
         self.user = user
         self.create_sale()
         user_sale = UserSales.objects.create(
-            user_id=self.user,
+            user=self.user,
             product_name="Test",
             revenue=500,
             sale_date="2021-01-01",
             sale_number=1,
         )
-        sale = UserSales.objects.filter(user_id=user).order_by("-revenue").first()
+        sale = UserSales.objects.filter(user=user).order_by("-revenue").first()
         assert sale.revenue == 500
         assert sale.product_name == "Test"
         assert sale.id == user_sale.id
@@ -132,13 +130,13 @@ class TestProductStats(unittest.TestCase):
         self.user = user
         self.create_sale()
         user_sale = UserSales.objects.create(
-            user_id=self.user,
+            user=self.user,
             product_name="TOY",
             revenue=500,
             sale_date="2021-01-01",
             sale_number=1,
         )
-        sale = UserSales.objects.filter(user_id=user).order_by("-revenue").first()
+        sale = UserSales.objects.filter(user=user).order_by("-revenue").first()
         assert sale.revenue == 500
         assert sale.product_name == sale.product_name
         assert sale.id == user_sale.id
@@ -153,14 +151,14 @@ class TestProductStats(unittest.TestCase):
         self.user = user
         self.create_sale()
         UserSales.objects.create(
-            user_id=self.user,
+            user=self.user,
             product_name="Test",
             revenue=500,
             sale_date="2021-01-01",
             sale_number=2,
         )
         sale = (
-            UserSales.objects.filter(user_id=user)
+            UserSales.objects.filter(user=user)
             .values("product_name")
             .annotate(count=Count("product_name"))
         )
@@ -264,7 +262,6 @@ class TestProductStats(unittest.TestCase):
         api_response = response.json()
         assert response.status_code == 400
         assert not api_response["success"]
-        assert api_response["error"] == "refresh_token"
 
     @pytest.mark.django_db
     def test_get_profile(self):
@@ -401,7 +398,7 @@ class TestProductStats(unittest.TestCase):
         refresh = RefreshToken.for_user(user)
         client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")
         UserSales.objects.create(
-            user_id=user,
+            user=user,
             product_name="Test",
             revenue=100,
             sale_date="2021-01-01",
@@ -488,7 +485,7 @@ class TestProductStats(unittest.TestCase):
         self.email = "test99@gmail.com"
         user1 = self.create_user()
         UserSales.objects.create(
-            user_id=user1,
+            user=user1,
             product_name="Test",
             revenue=100,
             sale_date="2021-01-01",
@@ -500,7 +497,7 @@ class TestProductStats(unittest.TestCase):
         self.email = "test100@gmail.com"
         user2 = self.create_user()
         UserSales.objects.create(
-            user_id=user2,
+            user=user2,
             product_name="Test",
             revenue=50,
             sale_date="2021-01-01",
@@ -529,7 +526,7 @@ class TestProductStats(unittest.TestCase):
         refresh = RefreshToken.for_user(user)
         client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")
         UserSales.objects.create(
-            user_id=user,
+            user=user,
             product_name="Test",
             revenue=100,
             sale_date="2021-01-01",
@@ -578,7 +575,7 @@ class TestProductStats(unittest.TestCase):
         return: UserSales object.
         """
         sale = UserSales.objects.create(
-            user_id=self.user,
+            user=self.user,
             product_name="Test",
             revenue=100,
             sale_date="2021-01-01",

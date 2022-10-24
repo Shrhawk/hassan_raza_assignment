@@ -124,8 +124,8 @@ SIMPLE_JWT = {
     "ALGORITHM": "HS256",
     "AUTH_HEADER_TYPES": ("Bearer",),
     "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
-    "USER_ID_FIELD": "id",
-    "USER_ID_CLAIM": "user_id",
+    "user_FIELD": "id",
+    "user_CLAIM": "user",
     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
     "TOKEN_TYPE_CLAIM": "token_type",
     "JTI_CLAIM": "jti",
@@ -176,6 +176,4 @@ STATIC_URL = "/static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 django_on_heroku.settings(locals())
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "static")
-]
+STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]

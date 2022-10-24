@@ -1,15 +1,40 @@
+from django.db.models import Count
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status, parsers
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.viewsets import ModelViewSet
+from rest_framework import generics
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.shortcuts import get_object_or_404
 
-from product_stat_apis.constants import *
-from product_stat_apis.serializers import *
-from product_stat_apis.swagger_schemas.custom_schemas import *
+from product_stat_apis.constants import SUCCESS, DATA, MESSAGE, ERROR
+from product_stat_apis.models import User, Country, City, UserSales
+from product_stat_apis.serializers import (
+    UserLoginSerializer,
+    UserProfileSerializer,
+    CountrySerializer,
+    CitySerializer,
+    UserSaleSerializer,
+    UserSalesDataSerializer,
+    SaleUpdateSerializer,
+    SaleStatSerializer,
+    SaleSerializerList,
+)
+from product_stat_apis.swagger_schemas.custom_schemas import (
+    user_login_schema_response,
+    user_profile_response_schema,
+    update_user_profile_schema_response,
+    user_logout_schema_response,
+    country_schema_response,
+    city_schema_response,
+    upload_sale_data_schema_response,
+    update_sale_data_response,
+    sale_stat_response,
+    sale_graph_response,
+)
 
 
-class UserLoginViewSet(ModelViewSet):
+class UserLoginViewSet(generics.CreateAPIView):
     serializer_class = UserLoginSerializer
     permission_classes = (AllowAny,)
     auto_schema = None
@@ -22,24 +47,26 @@ class UserLoginViewSet(ModelViewSet):
         try:
             data = request.data
             serializer = self.serializer_class(data=data, context={"request": request})
-            serializer.is_valid(
-                raise_exception=True,
-            )
+            if serializer.is_valid():
+                return Response(
+                    {
+                        SUCCESS: True,
+                        MESSAGE: "User login successfully",
+                        DATA: serializer.validated_data,
+                    },
+                    status=status.HTTP_200_OK,
+                )
             return Response(
-                {
-                    SUCCESS: True,
-                    MESSAGE: "User login successfully",
-                    DATA: serializer.validated_data,
-                },
-                status=status.HTTP_200_OK,
+                {SUCCESS: False, ERROR: serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST,
             )
         except Exception as e:
             return Response(
-                {SUCCESS: False, "error": e.args[0]}, status=status.HTTP_400_BAD_REQUEST
+                {SUCCESS: False, ERROR: str(e)}, status=status.HTTP_400_BAD_REQUEST
             )
 
 
-class UserProfileViewSet(ModelViewSet):
+class UserProfileViewSet(generics.RetrieveUpdateAPIView):
     serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated]
     queryset = User.objects.all()
@@ -58,7 +85,7 @@ class UserProfileViewSet(ModelViewSet):
             )
         except Exception as e:
             return Response(
-                {SUCCESS: False, ERROR: e.args[0]}, status=status.HTTP_400_BAD_REQUEST
+                {SUCCESS: False, ERROR: str(e)}, status=status.HTTP_400_BAD_REQUEST
             )
 
     @swagger_auto_schema(responses=update_user_profile_schema_response)
@@ -70,19 +97,27 @@ class UserProfileViewSet(ModelViewSet):
             serializer = self.get_serializer(
                 request.user, data=request.data, partial=True
             )
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
+            if serializer.is_valid():
+                serializer.save()
+                return Response(
+                    {
+                        SUCCESS: True,
+                        MESSAGE: "User profile updated",
+                        DATA: serializer.data,
+                    },
+                    status=status.HTTP_200_OK,
+                )
             return Response(
-                {SUCCESS: True, MESSAGE: "User profile updated", DATA: serializer.data},
-                status=status.HTTP_200_OK,
+                {SUCCESS: False, ERROR: serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST,
             )
         except Exception as e:
             return Response(
-                {SUCCESS: False, ERROR: e.args[0]}, status=status.HTTP_400_BAD_REQUEST
+                {SUCCESS: False, ERROR: str(e)}, status=status.HTTP_400_BAD_REQUEST
             )
 
 
-class UserLogoutViewSet(ModelViewSet):
+class UserLogoutViewSet(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = None
 
@@ -101,11 +136,11 @@ class UserLogoutViewSet(ModelViewSet):
             )
         except Exception as e:
             return Response(
-                {SUCCESS: False, ERROR: e.args[0]}, status=status.HTTP_400_BAD_REQUEST
+                {SUCCESS: False, ERROR: str(e)}, status=status.HTTP_400_BAD_REQUEST
             )
 
 
-class CountryViewSet(ModelViewSet):
+class CountryViewSet(generics.ListAPIView):
     serializer_class = CountrySerializer
     permission_classes = [AllowAny]
     queryset = Country.objects.all()
@@ -116,7 +151,7 @@ class CountryViewSet(ModelViewSet):
         This function is used to get country list.
         """
         try:
-            serializer = self.serializer_class(self.queryset, many=True)
+            serializer = self.serializer_class(self.queryset.all(), many=True)
             return Response(
                 {SUCCESS: True, MESSAGE: "Country list", DATA: serializer.data},
                 status=status.HTTP_200_OK,
@@ -127,7 +162,7 @@ class CountryViewSet(ModelViewSet):
             )
 
 
-class CityViewSet(ModelViewSet):
+class CityViewSet(generics.ListAPIView):
     serializer_class = CitySerializer
     permission_classes = [AllowAny]
     queryset = City.objects.all()
@@ -162,7 +197,7 @@ class CityViewSet(ModelViewSet):
             )
 
 
-class SalesDataViewSet(ModelViewSet):
+class SalesDataViewSet(generics.CreateAPIView):
     serializer_class = UserSaleSerializer
     permission_classes = [IsAuthenticated]
     parser_classes = (
@@ -180,7 +215,7 @@ class SalesDataViewSet(ModelViewSet):
         try:
             data = request.data
             serializer = self.serializer_class(data=data, context={"request": request})
-            if serializer.is_valid(raise_exception=True):
+            if serializer.is_valid():
                 serializer.save()
                 return Response(
                     {SUCCESS: True, MESSAGE: "Sales data saved", DATA: serializer.data},
@@ -200,7 +235,7 @@ class SalesDataViewSet(ModelViewSet):
             )
 
 
-class UserSalesDataViewSet(ModelViewSet):
+class UserSalesDataViewSet(generics.UpdateAPIView, generics.ListAPIView):
     serializer_class = UserSaleSerializer
     permission_classes = [IsAuthenticated]
     queryset = UserSales.objects.all()
@@ -210,7 +245,7 @@ class UserSalesDataViewSet(ModelViewSet):
         This function is used to get user sales data.
         """
         try:
-            sales = self.queryset.filter(user_id=request.user).order_by("-sale_date")
+            sales = self.queryset.filter(user=request.user).order_by("-sale_date")
             if not sales:
                 return Response(
                     {SUCCESS: False, MESSAGE: "No sales data found"},
@@ -234,16 +269,14 @@ class UserSalesDataViewSet(ModelViewSet):
         This function is used to update user sales data.
         """
         try:
-            sale = self.queryset.filter(
-                id=request.data["id"], user_id=request.user.id
-            ).first()
+            sale = get_object_or_404(UserSales, request.data["id"])
             if not sale:
                 return Response(
                     {SUCCESS: False, ERROR: "Sale not found"},
-                    status=status.HTTP_400_BAD_REQUEST,
+                    status=status.HTTP_404_NOT_FOUND,
                 )
             serializer = SaleUpdateSerializer(sale, data=request.data, partial=True)
-            if serializer.is_valid(raise_exception=True):
+            if serializer.is_valid():
                 serializer.save()
                 return Response(
                     {
@@ -253,13 +286,17 @@ class UserSalesDataViewSet(ModelViewSet):
                     },
                     status=status.HTTP_200_OK,
                 )
+            return Response(
+                {SUCCESS: False, ERROR: serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         except Exception as e:
             return Response(
                 {SUCCESS: False, ERROR: str(e)}, status=status.HTTP_400_BAD_REQUEST
             )
 
 
-class SaleStatsViewSet(ModelViewSet):
+class SaleStatsViewSet(generics.ListAPIView):
     serializer_class = SaleStatSerializer
     permission_classes = [IsAuthenticated]
     queryset = UserSales.objects.all()
@@ -271,6 +308,11 @@ class SaleStatsViewSet(ModelViewSet):
         """
         try:
             sales = self.queryset.filter().first()
+            if not sales:
+                return Response(
+                    {SUCCESS: False, ERROR: "Sales not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
             serializer = self.serializer_class(sales, context={"request": request})
             return Response(
                 {SUCCESS: True, MESSAGE: "Sales data", DATA: serializer.data},
@@ -282,7 +324,7 @@ class SaleStatsViewSet(ModelViewSet):
             )
 
 
-class SaleGraphData(ModelViewSet):
+class SaleGraphData(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     queryset = UserSales.objects.all()
     serializer_class = SaleSerializerList
@@ -294,7 +336,7 @@ class SaleGraphData(ModelViewSet):
         """
         try:
             sales = (
-                self.queryset.filter(user_id=request.user.id)
+                self.queryset.filter(user=request.user.id)
                 .values("sale_date", "product_name")
                 .annotate(Count("sale_date"))
                 .annotate(Count("product_name"))
